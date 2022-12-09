@@ -8,6 +8,10 @@ import (
 	"strings"
 )
 
+// This challenge would probably be much simpler to solve
+// using a 3x3 matrix with match outcomes, but I was already
+// too deep into this solution to refactor everything.
+
 type MatchResult int
 
 const (
@@ -15,6 +19,19 @@ const (
 	DEFEAT
 	WIN
 )
+
+func (mr MatchResult) ResultScore() int {
+	switch mr {
+	case WIN:
+		return 6
+	case DRAW:
+		return 3
+	case DEFEAT:
+		return 0
+	default:
+		panic("Unrecognized match result")
+	}
+}
 
 func (mr MatchResult) String() string {
 	switch mr {
@@ -41,8 +58,28 @@ var myHands = map[string]HandPlay{
 	"Z": Scissors{},
 }
 
+var expectedResult = map[string]MatchResult{
+	"X": DEFEAT,
+	"Y": DRAW,
+	"Z": WIN,
+}
+
 type HandPlay interface {
 	Compare(other HandPlay) MatchResult
+	Predict(result MatchResult) HandPlay
+}
+
+func HandScore(hand HandPlay) int {
+	switch hand.(type) {
+	case Rock:
+		return 1
+	case Paper:
+		return 2
+	case Scissors:
+		return 3
+	default:
+		panic("Unrecognized hand played")
+	}
 }
 
 type Rock struct{}
@@ -57,6 +94,19 @@ func (rock Rock) Compare(other HandPlay) MatchResult {
 		return WIN
 	default:
 		panic("Unrecognized hand played.")
+	}
+}
+
+func (rock Rock) Predict(result MatchResult) HandPlay {
+	switch result {
+	case WIN:
+		return Paper{}
+	case DRAW:
+		return Rock{}
+	case DEFEAT:
+		return Scissors{}
+	default:
+		panic("Unrecognized match result")
 	}
 }
 
@@ -75,6 +125,19 @@ func (paper Paper) Compare(other HandPlay) MatchResult {
 	}
 }
 
+func (paper Paper) Predict(result MatchResult) HandPlay {
+	switch result {
+	case WIN:
+		return Scissors{}
+	case DRAW:
+		return Paper{}
+	case DEFEAT:
+		return Rock{}
+	default:
+		panic("Unrecognized match result")
+	}
+}
+
 type Scissors struct{}
 
 func (scissors Scissors) Compare(other HandPlay) MatchResult {
@@ -90,33 +153,50 @@ func (scissors Scissors) Compare(other HandPlay) MatchResult {
 	}
 }
 
+func (scissors Scissors) Predict(result MatchResult) HandPlay {
+	switch result {
+	case WIN:
+		return Rock{}
+	case DRAW:
+		return Scissors{}
+	case DEFEAT:
+		return Paper{}
+	default:
+		panic("Unrecognized match result")
+	}
+}
+
 type RpsMatch struct {
-	PlayerHand   HandPlay
-	OpponentHand HandPlay
+	PlayerHand     HandPlay
+	OpponentHand   HandPlay
+	StrategyResult MatchResult // Part 2
 }
 
 func (r RpsMatch) Score() int {
 	score := 0
 
-	switch r.PlayerHand.(type) {
-	case Rock:
-		score += 1
-	case Paper:
-		score += 2
-	case Scissors:
-		score += 3
-	default:
-		panic("Unrecognized hand played")
-	}
+	// The match score is the sum of the player's
+	// hand score plus the score of the result of
+	// the match given by the comparison of the hands
+	score += HandScore(r.PlayerHand)
 
-	switch r.PlayerHand.Compare(r.OpponentHand) {
-	case WIN:
-		score += 6
-	case DRAW:
-		score += 3
-	case DEFEAT:
-		score += 0
-	}
+	matchResult := r.PlayerHand.Compare(r.OpponentHand)
+	score += matchResult.ResultScore()
+
+	return score
+}
+
+func (r RpsMatch) StrategyScore() int {
+	score := 0
+
+	// The strategy score is the sum of the result given
+	// by the strategy plus the score for the hand
+	// that must be played to achieve the strategy result.
+	score += r.StrategyResult.ResultScore()
+
+	handPlayed := r.OpponentHand.Predict(r.StrategyResult)
+
+	score += HandScore(handPlayed)
 
 	return score
 }
@@ -140,9 +220,15 @@ func ParseMatch(matchtext string) (RpsMatch, error) {
 		return RpsMatch{}, errors.New("invalid rock paper scissors match: wrong hand representation for opponent")
 	}
 
+	strategyResult, ok := expectedResult[myhand]
+	if !ok {
+		return RpsMatch{}, errors.New("invalid strategy result")
+	}
+
 	return RpsMatch{
-		PlayerHand:   playerHand,
-		OpponentHand: oppHand,
+		PlayerHand:     playerHand,
+		OpponentHand:   oppHand,
+		StrategyResult: strategyResult,
 	}, nil
 }
 
@@ -155,6 +241,16 @@ func (rs RpsStrategy) TotalScore() int {
 
 	for _, match := range rs.Matches {
 		total += match.Score()
+	}
+
+	return total
+}
+
+func (rs RpsStrategy) TotalScoreFollowingStrategy() int {
+	total := 0
+
+	for _, match := range rs.Matches {
+		total += match.StrategyScore()
 	}
 
 	return total

@@ -42,9 +42,9 @@ func TestParseMatch(t *testing.T) {
 		SerializedMatch string
 		ExpectedMatch   rps.RpsMatch
 	}{
-		{"A Y", rps.RpsMatch{rps.Rock{}, rps.Paper{}}},
-		{"B X", rps.RpsMatch{rps.Paper{}, rps.Rock{}}},
-		{"C Z", rps.RpsMatch{rps.Scissors{}, rps.Scissors{}}},
+		{"A Y", rps.RpsMatch{rps.Paper{}, rps.Rock{}, rps.DRAW}},
+		{"B X", rps.RpsMatch{rps.Rock{}, rps.Paper{}, rps.DEFEAT}},
+		{"C Z", rps.RpsMatch{rps.Scissors{}, rps.Scissors{}, rps.WIN}},
 	}
 
 	for _, tc := range testCases {
@@ -56,6 +56,27 @@ func TestParseMatch(t *testing.T) {
 
 			if !reflect.DeepEqual(match, tc.ExpectedMatch) {
 				t.Errorf("expected parsed match to be %#v but got %#v", tc.ExpectedMatch, match)
+			}
+		})
+	}
+}
+
+func TestStrategyScore(t *testing.T) {
+	testCases := []struct {
+		Match         rps.RpsMatch
+		ExpectedScore int
+	}{
+		{rps.RpsMatch{rps.Paper{}, rps.Rock{}, rps.DRAW}, 4},
+		{rps.RpsMatch{rps.Rock{}, rps.Paper{}, rps.DEFEAT}, 1},
+		{rps.RpsMatch{rps.Scissors{}, rps.Scissors{}, rps.WIN}, 7},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("calculates strategy score for match: %+v", tc.Match), func(t *testing.T) {
+			sscore := tc.Match.StrategyScore()
+
+			if sscore != tc.ExpectedScore {
+				t.Errorf("Expected strategy score to be %d but got %d", tc.ExpectedScore, sscore)
 			}
 		})
 	}

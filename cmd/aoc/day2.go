@@ -8,6 +8,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var day2part2 bool
+
 var day2Cmd = &cobra.Command{
 	Use:   "day2 [filepath of strategy]",
 	Short: "calculates the total score for the given strategy",
@@ -16,6 +18,7 @@ var day2Cmd = &cobra.Command{
 }
 
 func init() {
+	day2Cmd.Flags().BoolVarP(&day2part2, "second", "s", false, "run part 2 of the challenge")
 	rootCmd.AddCommand(day2Cmd)
 }
 
@@ -34,5 +37,9 @@ func CalculateStrategyScore(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Total score: %d\n", strategy.TotalScore())
+	if !day2part2 {
+		fmt.Printf("Total score: %d\n", strategy.TotalScore())
+	} else {
+		fmt.Printf("Total strategy score: %d\n", strategy.TotalScoreFollowingStrategy())
+	}
 }
